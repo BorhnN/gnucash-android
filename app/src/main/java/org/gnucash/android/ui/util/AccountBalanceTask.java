@@ -43,9 +43,10 @@ public class AccountBalanceTask extends AsyncTask<String, Void, Money> {
     @ColorInt
     private final int colorBalanceZero;
 
-    public AccountBalanceTask(TextView balanceTextView, @ColorInt int colorZero) {
+    public AccountBalanceTask(AccountsDbAdapter accountsDbAdapter, TextView balanceTextView, @ColorInt int colorZero) {
+        super();
+        this.accountsDbAdapter = accountsDbAdapter;
         accountBalanceTextViewReference = new WeakReference<>(balanceTextView);
-        accountsDbAdapter = AccountsDbAdapter.getInstance();
         colorBalanceZero = colorZero;
     }
 
@@ -58,22 +59,19 @@ public class AccountBalanceTask extends AsyncTask<String, Void, Money> {
             return Money.getZeroInstance();
         }
 
-        Money balance = Money.getZeroInstance();
         try {
-            balance = accountsDbAdapter.getAccountBalance(accountUID, -1, -1);
+            return accountsDbAdapter.getAccountBalance(accountUID, -1, -1);
         } catch (Exception ex) {
             Timber.e(ex, "Error computing account balance");
         }
-        return balance;
+        return Money.getZeroInstance();
     }
 
     @Override
     protected void onPostExecute(Money balance) {
-        if (accountBalanceTextViewReference.get() != null && balance != null) {
-            final TextView balanceTextView = accountBalanceTextViewReference.get();
-            if (balanceTextView != null) {
-                displayBalance(balanceTextView, balance, colorBalanceZero);
-            }
+        final TextView balanceTextView = accountBalanceTextViewReference.get();
+        if (balanceTextView != null && balance != null) {
+            displayBalance(balanceTextView, balance, colorBalanceZero);
         }
     }
 }
