@@ -49,7 +49,6 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.ActionBar;
 import androidx.appcompat.app.AppCompatActivity;
-import androidx.core.content.ContextCompat;
 
 import com.codetroopers.betterpickers.recurrencepicker.EventRecurrence;
 import com.codetroopers.betterpickers.recurrencepicker.EventRecurrenceFormatter;
@@ -292,6 +291,7 @@ public class ExportFormFragment extends MenuFragment implements
         }
 
         mBinding.checkboxPostExportDelete.setChecked(exportParams.shouldDeleteTransactionsAfterExport());
+        mBinding.compression.setChecked(exportParams.isCompressed);
 
         String rrule = scheduledAction.getRuleString();
         onRecurrenceSet(rrule);
@@ -344,7 +344,8 @@ public class ExportFormFragment extends MenuFragment implements
      * Starts the export of transactions with the specified parameters
      */
     private void startExport() {
-        ExportParams exportParameters = mExportParams;
+        final Activity activity = requireActivity();
+        final ExportParams exportParameters = mExportParams;
 
         if (exportParameters.getExportTarget() == ExportParams.ExportTarget.URI && exportParameters.getExportLocation() == null) {
             mExportStarted = true;
@@ -359,7 +360,7 @@ public class ExportFormFragment extends MenuFragment implements
         }
 
         Timber.i("Commencing async export of transactions");
-        new ExportAsyncTask(requireActivity(), GnuCashApplication.getActiveBookUID()).execute(exportParameters);
+        new ExportAsyncTask(activity, GnuCashApplication.getActiveBookUID()).execute(exportParameters);
 
         if (mRecurrenceRule != null) {
             DatabaseAdapter.UpdateMethod updateMethod = DatabaseAdapter.UpdateMethod.replace;
@@ -376,7 +377,7 @@ public class ExportFormFragment extends MenuFragment implements
         }
 
         int position = mBinding.spinnerExportDestination.getSelectedItemPosition();
-        PreferenceManager.getDefaultSharedPreferences(getActivity())
+        PreferenceManager.getDefaultSharedPreferences(activity)
             .edit()
             .putInt(getString(R.string.key_last_export_destination), position)
             .apply();
@@ -391,6 +392,8 @@ public class ExportFormFragment extends MenuFragment implements
      */
     private void bindViewListeners(View view) {
         final Context context = view.getContext();
+        final AppCompatActivity activity = (AppCompatActivity) requireActivity();
+        final SharedPreferences preferences = PreferenceManager.getDefaultSharedPreferences(context);
         // export destination bindings
         ArrayAdapter<CharSequence> adapter = ArrayAdapter.createFromResource(context,
             R.array.export_destinations, android.R.layout.simple_spinner_item);
@@ -421,8 +424,7 @@ public class ExportFormFragment extends MenuFragment implements
                         setExportUri(null);
                         mBinding.recurrenceOptions.setVisibility(View.VISIBLE);
                         mExportParams.setExportTarget(ExportParams.ExportTarget.OWNCLOUD);
-                        if (!(PreferenceManager.getDefaultSharedPreferences(getActivity())
-                            .getBoolean(getString(R.string.key_owncloud_sync), false))) {
+                        if (!preferences.getBoolean(getString(R.string.key_owncloud_sync), false)) {
                             OwnCloudDialogFragment ocDialog = OwnCloudDialogFragment.newInstance(null);
                             ocDialog.show(getParentFragmentManager(), "ownCloud dialog");
                         }
@@ -445,16 +447,13 @@ public class ExportFormFragment extends MenuFragment implements
             }
         });
 
-        int position = PreferenceManager.getDefaultSharedPreferences(getActivity())
-            .getInt(getString(R.string.key_last_export_destination), 0);
+        int position = preferences.getInt(getString(R.string.key_last_export_destination), 0);
         mBinding.spinnerExportDestination.setSelection(position);
 
         //**************** export start time bindings ******************
         Timestamp timestamp = PreferencesHelper.getLastExportTime();
         final long date = timestamp.getTime() - DateUtils.WEEK_IN_MILLIS;
         mExportStartCalendar.setTimeInMillis(date);
-        mBinding.exportStartDate.setText(TransactionFormFragment.DATE_FORMATTER.print(date));
-        mBinding.exportStartTime.setText(TransactionFormFragment.TIME_FORMATTER.print(date));
 
         mBinding.exportStartDate.setOnClickListener(new View.OnClickListener() {
 
@@ -465,6 +464,7 @@ public class ExportFormFragment extends MenuFragment implements
                     .show(getParentFragmentManager(), "date_picker_fragment");
             }
         });
+        mBinding.exportStartDate.setText(TransactionFormFragment.DATE_FORMATTER.print(date));
 
         mBinding.exportStartTime.setOnClickListener(new View.OnClickListener() {
 
@@ -475,8 +475,8 @@ public class ExportFormFragment extends MenuFragment implements
                     .show(getParentFragmentManager(), "time_picker_dialog_fragment");
             }
         });
+        mBinding.exportStartTime.setText(TransactionFormFragment.TIME_FORMATTER.print(date));
 
-        SharedPreferences sharedPrefs = PreferenceManager.getDefaultSharedPreferences(getActivity());
         mBinding.switchExportAll.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
             @Override
             public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
@@ -484,22 +484,29 @@ public class ExportFormFragment extends MenuFragment implements
                 mBinding.exportStartTime.setEnabled(!isChecked);
             }
         });
+        mBinding.switchExportAll.setChecked(preferences.getBoolean(getString(R.string.key_export_all_transactions), false));
 
-        mBinding.switchExportAll.setChecked(sharedPrefs.getBoolean(getString(R.string.key_export_all_transactions), false));
-        mBinding.checkboxPostExportDelete.setChecked(sharedPrefs.getBoolean(getString(R.string.key_delete_transactions_after_export), false));
         mBinding.checkboxPostExportDelete.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
             @Override
             public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
                 mExportParams.setDeleteTransactionsAfterExport(isChecked);
             }
         });
+        mBinding.checkboxPostExportDelete.setChecked(preferences.getBoolean(getString(R.string.key_delete_transactions_after_export), false));
 
-        AppCompatActivity activity = (AppCompatActivity) requireActivity();
+        mBinding.compression.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
+            @Override
+            public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
+                mExportParams.isCompressed = isChecked;
+            }
+        });
+        mBinding.compression.setChecked(preferences.getBoolean(getString(R.string.key_compress_export), true));
+
         mBinding.inputRecurrence.setOnClickListener(new RecurrenceViewClickListener(activity, mRecurrenceRule, this));
 
         //this part (setting the export format) must come after the recurrence view bindings above
         String keyDefaultExportFormat = getString(R.string.key_default_export_format);
-        String defaultExportFormat = sharedPrefs.getString(keyDefaultExportFormat, ExportFormat.XML.value);
+        String defaultExportFormat = preferences.getString(keyDefaultExportFormat, ExportFormat.XML.value);
         mExportParams.setExportFormat(ExportFormat.of(defaultExportFormat));
 
         RadioButton.OnCheckedChangeListener radioClickListener = new RadioButton.OnCheckedChangeListener() {
