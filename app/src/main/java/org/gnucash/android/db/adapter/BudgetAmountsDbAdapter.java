@@ -27,7 +27,6 @@ import org.gnucash.android.app.GnuCashApplication;
 import org.gnucash.android.model.BudgetAmount;
 import org.gnucash.android.model.Money;
 
-import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -43,11 +42,11 @@ public class BudgetAmountsDbAdapter extends DatabaseAdapter<BudgetAmount> {
      */
     public BudgetAmountsDbAdapter(SQLiteDatabase db) {
         super(db, BudgetAmountEntry.TABLE_NAME, new String[]{
-                BudgetAmountEntry.COLUMN_BUDGET_UID,
-                BudgetAmountEntry.COLUMN_ACCOUNT_UID,
-                BudgetAmountEntry.COLUMN_AMOUNT_NUM,
-                BudgetAmountEntry.COLUMN_AMOUNT_DENOM,
-                BudgetAmountEntry.COLUMN_PERIOD_NUM
+            BudgetAmountEntry.COLUMN_BUDGET_UID,
+            BudgetAmountEntry.COLUMN_ACCOUNT_UID,
+            BudgetAmountEntry.COLUMN_AMOUNT_NUM,
+            BudgetAmountEntry.COLUMN_AMOUNT_DENOM,
+            BudgetAmountEntry.COLUMN_PERIOD_NUM
         });
     }
 
@@ -92,14 +91,8 @@ public class BudgetAmountsDbAdapter extends DatabaseAdapter<BudgetAmount> {
      */
     public List<BudgetAmount> getBudgetAmountsForBudget(String budgetUID) {
         Cursor cursor = fetchAllRecords(BudgetAmountEntry.COLUMN_BUDGET_UID + "=?",
-                new String[]{budgetUID}, null);
-
-        List<BudgetAmount> budgetAmounts = new ArrayList<>();
-        while (cursor.moveToNext()) {
-            budgetAmounts.add(buildModelInstance(cursor));
-        }
-        cursor.close();
-        return budgetAmounts;
+            new String[]{budgetUID}, null);
+        return getRecords(cursor);
     }
 
     /**
@@ -110,7 +103,7 @@ public class BudgetAmountsDbAdapter extends DatabaseAdapter<BudgetAmount> {
      */
     public int deleteBudgetAmountsForBudget(String budgetUID) {
         return mDb.delete(mTableName, BudgetAmountEntry.COLUMN_BUDGET_UID + "=?",
-                new String[]{budgetUID});
+            new String[]{budgetUID});
     }
 
     /**
@@ -121,12 +114,7 @@ public class BudgetAmountsDbAdapter extends DatabaseAdapter<BudgetAmount> {
      */
     public List<BudgetAmount> getBudgetAmounts(String accountUID) {
         Cursor cursor = fetchAllRecords(BudgetAmountEntry.COLUMN_ACCOUNT_UID + " = ?", new String[]{accountUID}, null);
-        List<BudgetAmount> budgetAmounts = new ArrayList<>();
-        while (cursor.moveToNext()) {
-            budgetAmounts.add(buildModelInstance(cursor));
-        }
-        cursor.close();
-        return budgetAmounts;
+        return getRecords(cursor);
     }
 
     /**

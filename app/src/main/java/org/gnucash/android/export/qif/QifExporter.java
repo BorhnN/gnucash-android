@@ -180,10 +180,11 @@ public class QifExporter extends Exporter {
                         if (decimalImbalance.compareTo(BigDecimal.ZERO) != 0) {
                             writer.append(QifHelper.SPLIT_CATEGORY_PREFIX)
                                     .append(AccountsDbAdapter.getImbalanceAccountName(
-                                            Commodity.getInstance(cursor.getString(cursor.getColumnIndexOrThrow("acct1_currency")))
+                                        mContext,
+                                        Commodity.getInstance(cursor.getString(cursor.getColumnIndexOrThrow("acct1_currency")))
                                     ))
-                                    .append(newLine);
-                            writer.append(QifHelper.SPLIT_AMOUNT_PREFIX)
+                                    .append(newLine)
+                                    .append(QifHelper.SPLIT_AMOUNT_PREFIX)
                                     .append(decimalImbalance.toPlainString())
                                     .append(newLine);
                         }
