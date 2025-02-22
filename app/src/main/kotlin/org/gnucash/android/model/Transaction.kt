@@ -431,10 +431,10 @@ class Transaction : BaseModel {
             var balance = createZeroInstance(accountCurrencyCode)
             for (split in splitList) {
                 if (split.accountUID != accountUID) continue
-                val amount: Money = if (split.value!!.commodity.currencyCode == accountCurrencyCode) {
-                    split.value!!
+                val amount: Money = if (split.value.commodity.currencyCode == accountCurrencyCode) {
+                    split.value
                 } else { //if this split belongs to the account, then either its value or quantity is in the account currency
-                    split.quantity!!
+                    split.quantity
                 }
                 val isDebitSplit = split.type === TransactionType.DEBIT
                 balance = if (isDebitAccount) {
