@@ -72,13 +72,12 @@ public class BudgetAmountsDbAdapter extends DatabaseAdapter<BudgetAmount> {
 
     @Override
     protected @NonNull SQLiteStatement bind(@NonNull SQLiteStatement stmt, @NonNull final BudgetAmount budgetAmount) {
-        stmt.clearBindings();
+        bindBaseModel(stmt, budgetAmount);
         stmt.bindString(1, budgetAmount.getBudgetUID());
         stmt.bindString(2, budgetAmount.getAccountUID());
         stmt.bindLong(3, budgetAmount.getAmount().getNumerator());
         stmt.bindLong(4, budgetAmount.getAmount().getDenominator());
         stmt.bindLong(5, budgetAmount.getPeriodNum());
-        stmt.bindString(6, budgetAmount.getUID());
 
         return stmt;
     }

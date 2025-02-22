@@ -31,6 +31,7 @@ import org.gnucash.android.model.BudgetAmount;
 import org.gnucash.android.model.Money;
 import org.gnucash.android.model.Recurrence;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -71,6 +72,13 @@ public class BudgetsDbAdapter extends DatabaseAdapter<Budget> {
      */
     public static BudgetsDbAdapter getInstance() {
         return GnuCashApplication.getBudgetDbAdapter();
+    }
+
+    @Override
+    public void close() throws IOException {
+        super.close();
+        budgetAmountsDbAdapter.close();
+        recurrenceDbAdapter.close();
     }
 
     @Override
@@ -131,16 +139,13 @@ public class BudgetsDbAdapter extends DatabaseAdapter<Budget> {
 
     @Override
     protected @NonNull SQLiteStatement bind(@NonNull SQLiteStatement stmt, @NonNull final Budget budget) {
-        stmt.clearBindings();
+        bindBaseModel(stmt, budget);
         stmt.bindString(1, budget.getName());
         if (budget.getDescription() != null) {
             stmt.bindString(2, budget.getDescription());
-        } else {
-            stmt.bindNull(2);
         }
         stmt.bindString(3, budget.getRecurrence().getUID());
         stmt.bindLong(4, budget.getNumberOfPeriods());
-        stmt.bindString(5, budget.getUID());
 
         return stmt;
     }
