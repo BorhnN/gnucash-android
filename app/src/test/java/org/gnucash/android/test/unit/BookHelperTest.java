@@ -68,10 +68,10 @@ public abstract class BookHelperTest extends GnuCashTest {
         DatabaseHelper databaseHelper = new DatabaseHelper(GnuCashApplication.getAppContext(), bookUID);
         SQLiteDatabase mainDb = databaseHelper.getReadableDatabase();
         mCommoditiesDbAdapter = new CommoditiesDbAdapter(mainDb);
-        mTransactionsDbAdapter = new TransactionsDbAdapter(mainDb, mCommoditiesDbAdapter);
-        mAccountsDbAdapter = new AccountsDbAdapter(mainDb, mTransactionsDbAdapter);
+        mTransactionsDbAdapter = new TransactionsDbAdapter(mCommoditiesDbAdapter);
+        mAccountsDbAdapter = new AccountsDbAdapter(mTransactionsDbAdapter);
         RecurrenceDbAdapter recurrenceDbAdapter = new RecurrenceDbAdapter(mainDb);
-        mScheduledActionDbAdapter = new ScheduledActionDbAdapter(mainDb, recurrenceDbAdapter);
+        mScheduledActionDbAdapter = new ScheduledActionDbAdapter(recurrenceDbAdapter);
         mImportedDb = mainDb;
     }
 

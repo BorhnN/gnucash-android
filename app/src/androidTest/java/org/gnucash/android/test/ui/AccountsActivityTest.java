@@ -116,7 +116,8 @@ public class AccountsActivityTest extends GnuAndroidTest {
 
     @BeforeClass
     public static void prepTest() {
-        preventFirstRunDialogs(GnuCashApplication.getAppContext());
+        Context context = GnuCashApplication.getAppContext();
+        preventFirstRunDialogs(context);
 
         mSplitsDbAdapter = SplitsDbAdapter.getInstance();
         mTransactionsDbAdapter = TransactionsDbAdapter.getInstance();

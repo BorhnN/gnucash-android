@@ -48,21 +48,31 @@ public class BudgetsDbAdapter extends DatabaseAdapter<Budget> {
 
     /**
      * Opens the database adapter with an existing database
-     *
-     * @param db SQLiteDatabase object
      */
-    public BudgetsDbAdapter(@NonNull SQLiteDatabase db,
-                            @NonNull BudgetAmountsDbAdapter budgetAmountsDbAdapter,
-                            @NonNull RecurrenceDbAdapter recurrenceDbAdapter
-    ) {
-        super(db, BudgetEntry.TABLE_NAME, new String[]{
+    public BudgetsDbAdapter(@NonNull BudgetAmountsDbAdapter budgetAmountsDbAdapter,
+                            @NonNull RecurrenceDbAdapter recurrenceDbAdapter) {
+        super(budgetAmountsDbAdapter.mDb, BudgetEntry.TABLE_NAME, new String[]{
             BudgetEntry.COLUMN_NAME,
             BudgetEntry.COLUMN_DESCRIPTION,
             BudgetEntry.COLUMN_RECURRENCE_UID,
             BudgetEntry.COLUMN_NUM_PERIODS
         });
-        this.recurrenceDbAdapter = recurrenceDbAdapter;
         this.budgetAmountsDbAdapter = budgetAmountsDbAdapter;
+        this.recurrenceDbAdapter = recurrenceDbAdapter;
+    }
+
+    /**
+     * Opens the database adapter with an existing database
+     */
+    public BudgetsDbAdapter(@NonNull RecurrenceDbAdapter recurrenceDbAdapter) {
+        this(new BudgetAmountsDbAdapter(recurrenceDbAdapter.mDb), recurrenceDbAdapter);
+    }
+
+    /**
+     * Opens the database adapter with an existing database
+     */
+    public BudgetsDbAdapter(@NonNull SQLiteDatabase db) {
+        this(new RecurrenceDbAdapter(db));
     }
 
     /**
