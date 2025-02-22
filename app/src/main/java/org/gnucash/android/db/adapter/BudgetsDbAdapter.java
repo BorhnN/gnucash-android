@@ -40,24 +40,28 @@ import java.util.List;
  */
 public class BudgetsDbAdapter extends DatabaseAdapter<Budget> {
 
-    private RecurrenceDbAdapter mRecurrenceDbAdapter;
-    private BudgetAmountsDbAdapter mBudgetAmountsDbAdapter;
+    @NonNull
+    final RecurrenceDbAdapter recurrenceDbAdapter;
+    @NonNull
+    final BudgetAmountsDbAdapter budgetAmountsDbAdapter;
 
     /**
      * Opens the database adapter with an existing database
      *
      * @param db SQLiteDatabase object
      */
-    public BudgetsDbAdapter(SQLiteDatabase db, BudgetAmountsDbAdapter budgetAmountsDbAdapter,
-                            RecurrenceDbAdapter recurrenceDbAdapter) {
+    public BudgetsDbAdapter(@NonNull SQLiteDatabase db,
+                            @NonNull BudgetAmountsDbAdapter budgetAmountsDbAdapter,
+                            @NonNull RecurrenceDbAdapter recurrenceDbAdapter
+    ) {
         super(db, BudgetEntry.TABLE_NAME, new String[]{
             BudgetEntry.COLUMN_NAME,
             BudgetEntry.COLUMN_DESCRIPTION,
             BudgetEntry.COLUMN_RECURRENCE_UID,
             BudgetEntry.COLUMN_NUM_PERIODS
         });
-        mRecurrenceDbAdapter = recurrenceDbAdapter;
-        mBudgetAmountsDbAdapter = budgetAmountsDbAdapter;
+        this.recurrenceDbAdapter = recurrenceDbAdapter;
+        this.budgetAmountsDbAdapter = budgetAmountsDbAdapter;
     }
 
     /**
@@ -74,11 +78,11 @@ public class BudgetsDbAdapter extends DatabaseAdapter<Budget> {
         if (budget.getBudgetAmounts().size() == 0)
             throw new IllegalArgumentException("Budgets must have budget amounts");
 
-        mRecurrenceDbAdapter.addRecord(budget.getRecurrence(), updateMethod);
+        recurrenceDbAdapter.addRecord(budget.getRecurrence(), updateMethod);
         super.addRecord(budget, updateMethod);
-        mBudgetAmountsDbAdapter.deleteBudgetAmountsForBudget(budget.getUID());
+        budgetAmountsDbAdapter.deleteBudgetAmountsForBudget(budget.getUID());
         for (BudgetAmount budgetAmount : budget.getBudgetAmounts()) {
-            mBudgetAmountsDbAdapter.addRecord(budgetAmount, updateMethod);
+            budgetAmountsDbAdapter.addRecord(budgetAmount, updateMethod);
         }
     }
 
@@ -94,14 +98,14 @@ public class BudgetsDbAdapter extends DatabaseAdapter<Budget> {
         for (Budget budget : budgetList) {
             recurrenceList.add(budget.getRecurrence());
         }
-        mRecurrenceDbAdapter.bulkAddRecords(recurrenceList, updateMethod);
+        recurrenceDbAdapter.bulkAddRecords(recurrenceList, updateMethod);
 
         //now add the budgets themselves
         long nRow = super.bulkAddRecords(budgetList, updateMethod);
 
         //then add the budget amounts, they require the budgets to exist
         if (nRow > 0 && !budgetAmountList.isEmpty()) {
-            mBudgetAmountsDbAdapter.bulkAddRecords(budgetAmountList, updateMethod);
+            budgetAmountsDbAdapter.bulkAddRecords(budgetAmountList, updateMethod);
         }
 
         return nRow;
@@ -118,9 +122,9 @@ public class BudgetsDbAdapter extends DatabaseAdapter<Budget> {
         Budget budget = new Budget(name);
         populateBaseModelAttributes(cursor, budget);
         budget.setDescription(description);
-        budget.setRecurrence(mRecurrenceDbAdapter.getRecord(recurrenceUID));
+        budget.setRecurrence(recurrenceDbAdapter.getRecord(recurrenceUID));
         budget.setNumberOfPeriods(numPeriods);
-        budget.setBudgetAmounts(mBudgetAmountsDbAdapter.getBudgetAmountsForBudget(budget.getUID()));
+        budget.setBudgetAmounts(budgetAmountsDbAdapter.getBudgetAmountsForBudget(budget.getUID()));
 
         return budget;
     }
@@ -183,7 +187,7 @@ public class BudgetsDbAdapter extends DatabaseAdapter<Budget> {
      * @return Balance of all the accounts
      */
     public Money getAccountSum(String budgetUID, long periodStart, long periodEnd) {
-        List<BudgetAmount> budgetAmounts = mBudgetAmountsDbAdapter.getBudgetAmountsForBudget(budgetUID);
+        List<BudgetAmount> budgetAmounts = budgetAmountsDbAdapter.getBudgetAmountsForBudget(budgetUID);
         List<String> accountUIDs = new ArrayList<>();
         for (BudgetAmount budgetAmount : budgetAmounts) {
             accountUIDs.add(budgetAmount.getAccountUID());
