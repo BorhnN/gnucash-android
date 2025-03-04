@@ -202,17 +202,5 @@ public class OwnCloudExportTest extends GnuAndroidTest {
             .inRoot(withDecorView(not(is(mActivityRule.getActivity().getWindow().getDecorView()))))
             .check(matches(isDisplayed()));
     }
-
-    /**
-     * Sleep the thread for a specified period
-     *
-     * @param millis Duration to sleep in milliseconds
-     */
-    private void sleep(long millis) {
-        try {
-            Thread.sleep(millis);
-        } catch (InterruptedException ignore) {
-        }
-    }
 }
 

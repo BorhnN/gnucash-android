@@ -202,19 +202,6 @@ public class TransactionsActivityTest extends GnuAndroidTest {
     }
 
     /**
-     * Sleep the thread for a specified period
-     *
-     * @param millis Duration to sleep in milliseconds
-     */
-    private void sleep(long millis) {
-        try {
-            Thread.sleep(millis);
-        } catch (InterruptedException e) {
-            e.printStackTrace();
-        }
-    }
-
-    /**
      * Checks that a specific toast message is displayed
      *
      * @param toastString String that should be displayed

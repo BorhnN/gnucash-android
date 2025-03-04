@@ -343,18 +343,6 @@ public class AccountsActivityTest extends GnuAndroidTest {
 
     }
 
-    /**
-     * Sleep the thread for a specified period
-     *
-     * @param millis Duration to sleep in milliseconds
-     */
-    private void sleep(long millis) {
-        try {
-            Thread.sleep(millis);
-        } catch (InterruptedException ignore) {
-        }
-    }
-
     public void testDeleteSimpleAccount() {
         refreshAccountsList();
         assertThat(mAccountsDbAdapter.getRecordsCount()).isEqualTo(2);
