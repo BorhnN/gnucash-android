@@ -555,7 +555,7 @@ public class AccountsListFragment extends MenuFragment implements
                     Money budgetAmount = budget.getAmount(accountUID);
 
                     if (budgetAmount != null) {
-                        double budgetProgress = budgetAmount.isAmountZero() ? 0 : balance.div(budgetAmount).toDouble() * 100;
+                        double budgetProgress = balance.isAmountZero() || budgetAmount.isAmountZero() ? 0 : balance.div(budgetAmount).toDouble() * 100;
                         budgetIndicator.setVisibility(View.VISIBLE);
                         budgetIndicator.setProgress((int) budgetProgress);
                     } else {
