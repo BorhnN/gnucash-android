@@ -51,7 +51,9 @@ import org.gnucash.android.app.GnuCashApplication;
 import org.gnucash.android.databinding.ActivityAccountsBinding;
 import org.gnucash.android.db.DatabaseSchema;
 import org.gnucash.android.db.adapter.AccountsDbAdapter;
+import org.gnucash.android.db.adapter.CommoditiesDbAdapter;
 import org.gnucash.android.importer.ImportAsyncTask;
+import org.gnucash.android.model.Commodity;
 import org.gnucash.android.service.ScheduledActionService;
 import org.gnucash.android.ui.common.BaseDrawerActivity;
 import org.gnucash.android.ui.common.FormActivity;
@@ -383,8 +385,12 @@ public class AccountsActivity extends BaseDrawerActivity implements
             delegate = new TaskDelegate() {
                 @Override
                 public void onTaskComplete() {
-                    AccountsDbAdapter.getInstance().updateAllAccounts(DatabaseSchema.AccountEntry.COLUMN_CURRENCY, currencyCode);
-                    GnuCashApplication.setDefaultCurrencyCode(activity, currencyCode);
+                    Commodity currency = CommoditiesDbAdapter.getInstance().getCommodity(currencyCode);
+                    if (currency != null) {
+                        AccountsDbAdapter.getInstance().updateAllAccounts(DatabaseSchema.AccountEntry.COLUMN_CURRENCY, currencyCode);
+                        AccountsDbAdapter.getInstance().updateAllAccounts(DatabaseSchema.AccountEntry.COLUMN_COMMODITY_UID, currency.getUID());
+                        GnuCashApplication.setDefaultCurrencyCode(activity, currencyCode);
+                    }
                     if (callback != null) {
                         callback.onTaskComplete();
                     }
