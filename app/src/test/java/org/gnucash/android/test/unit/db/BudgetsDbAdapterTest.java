@@ -55,7 +55,7 @@ public class BudgetsDbAdapterTest extends GnuCashTest {
     public void setUp() {
         mAccountsDbAdapter = AccountsDbAdapter.getInstance();
         mBudgetsDbAdapter = BudgetsDbAdapter.getInstance();
-        mBudgetAmountsDbAdapter = mBudgetsDbAdapter.getAmountsDbAdapter();
+        mBudgetAmountsDbAdapter = BudgetAmountsDbAdapter.getInstance();
         mRecurrenceDbAdapter = RecurrenceDbAdapter.getInstance();
 
         mAccount = new Account("Budgeted account");

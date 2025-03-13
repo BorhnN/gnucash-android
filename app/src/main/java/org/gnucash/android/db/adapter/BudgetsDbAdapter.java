@@ -49,9 +49,9 @@ public class BudgetsDbAdapter extends DatabaseAdapter<Budget> {
     /**
      * Opens the database adapter with an existing database
      */
-    public BudgetsDbAdapter(@NonNull
-                            BudgetAmountsDbAdapter budgetAmountsDbAdapter,
-                            @NonNullRecurrenceDbAdapter recurrenceDbAdapter
+    public BudgetsDbAdapter(
+        @NonNull BudgetAmountsDbAdapter budgetAmountsDbAdapter,
+        @NonNull RecurrenceDbAdapter recurrenceDbAdapter
     ) {
         super(budgetAmountsDbAdapter.mDb, BudgetEntry.TABLE_NAME, new String[]{
             BudgetEntry.COLUMN_NAME,
@@ -83,7 +83,7 @@ public class BudgetsDbAdapter extends DatabaseAdapter<Budget> {
      * @param db SQLiteDatabase object
      */
     public BudgetsDbAdapter(SQLiteDatabase db, RecurrenceDbAdapter recurrenceDbAdapter) {
-        this(db, new BudgetAmountsDbAdapter(db), recurrenceDbAdapter);
+        this(new BudgetAmountsDbAdapter(db), recurrenceDbAdapter);
     }
 
     /**
