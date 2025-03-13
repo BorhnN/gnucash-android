@@ -99,7 +99,7 @@ public class QifExporter extends Exporter {
 
     @Override
     public List<String> generateExport() throws ExporterException {
-        String lastExportTimeStamp = TimestampHelper.getUtcStringFromTimestamp(mExportParams.getExportStartTime());
+        String startTimeString = Long.toString(mExportParams.getExportStartTime().getTime());
         TransactionsDbAdapter transactionsDbAdapter = mTransactionsDbAdapter;
 
         final List<Account> accountsList = mAccountsDbAdapter.getSimpleAccountList();
@@ -132,7 +132,8 @@ public class QifExporter extends Exporter {
                 "( " + AccountEntry.TABLE_NAME + "_" + AccountEntry.COLUMN_UID + " != account1." + AccountEntry.COLUMN_UID + " OR " +
                 // or if the transaction has only one split (the whole transaction would be lost if it is not selected)
                 "trans_split_count == 1 )" +
-                " AND " + TransactionEntry.TABLE_NAME + "_" + TransactionEntry.COLUMN_MODIFIED_AT + " > \"" + lastExportTimeStamp + "\"";
+                " AND " + TransactionEntry.TABLE_NAME + "_" + TransactionEntry.COLUMN_TIMESTAMP + " >= ?";
+        final String whereArgs = new String[]{startTimeString};
         // trans_time ASC : put transactions in time order
         // trans_uid ASC  : put splits from the same transaction together
         final String orderBy = "acct1_uid ASC, trans_uid ASC, trans_time ASC";
@@ -142,7 +143,7 @@ public class QifExporter extends Exporter {
             cursor = transactionsDbAdapter.fetchTransactionsWithSplitsWithTransactionAccount(
                 projection,
                 where,
-                null,
+                whereArgs,
                 orderBy
             );
 
