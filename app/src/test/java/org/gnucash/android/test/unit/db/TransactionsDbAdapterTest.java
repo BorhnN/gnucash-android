@@ -17,7 +17,10 @@ package org.gnucash.android.test.unit.db;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import android.content.Context;
+
 import org.assertj.core.data.Index;
+import org.gnucash.android.app.GnuCashApplication;
 import org.gnucash.android.db.adapter.AccountsDbAdapter;
 import org.gnucash.android.db.adapter.SplitsDbAdapter;
 import org.gnucash.android.db.adapter.TransactionsDbAdapter;
@@ -99,6 +102,7 @@ public class TransactionsDbAdapterTest extends GnuCashTest {
 
     @Test
     public void shouldBalanceTransactionsOnSave() {
+        Context context = GnuCashApplication.getAppContext();
         Transaction transaction = new Transaction("Auto balance");
         Split split = new Split(new Money(BigDecimal.TEN, DEFAULT_CURRENCY),
                 alphaAccount.getUID());
@@ -110,7 +114,7 @@ public class TransactionsDbAdapterTest extends GnuCashTest {
         Transaction trn = mTransactionsDbAdapter.getRecord(transaction.getUID());
         assertThat(trn.getSplits()).hasSize(2);
 
-        String imbalanceAccountUID = mAccountsDbAdapter.getImbalanceAccountUID(Commodity.DEFAULT_COMMODITY);
+        String imbalanceAccountUID = mAccountsDbAdapter.getImbalanceAccountUID(context, Commodity.DEFAULT_COMMODITY);
         assertThat(trn.getSplits()).extracting("accountUID").contains(imbalanceAccountUID);
     }
 

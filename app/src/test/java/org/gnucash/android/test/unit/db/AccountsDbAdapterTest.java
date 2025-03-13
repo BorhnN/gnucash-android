@@ -17,7 +17,9 @@ package org.gnucash.android.test.unit.db;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import android.content.Context;
 import android.database.sqlite.SQLiteDatabase;
+import android.graphics.Color;
 
 import org.assertj.core.data.Index;
 import org.gnucash.android.R;
@@ -99,9 +101,9 @@ public class AccountsDbAdapterTest extends GnuCashTest {
             DatabaseHelper databaseHelper = new DatabaseHelper(GnuCashApplication.getAppContext(), bookUID);
             SQLiteDatabase db = databaseHelper.getWritableDatabase();
             mCommoditiesDbAdapter = new CommoditiesDbAdapter(db);
-            mSplitsDbAdapter = new SplitsDbAdapter(db, mCommoditiesDbAdapter);
-            mTransactionsDbAdapter = new TransactionsDbAdapter(db, mSplitsDbAdapter);
-            mAccountsDbAdapter = new AccountsDbAdapter(db, mTransactionsDbAdapter);
+            mSplitsDbAdapter = new SplitsDbAdapter(mCommoditiesDbAdapter);
+            mTransactionsDbAdapter = new TransactionsDbAdapter(mSplitsDbAdapter);
+            mAccountsDbAdapter = new AccountsDbAdapter(mTransactionsDbAdapter);
             BooksDbAdapter.getInstance().setActive(bookUID);
         }
     }
@@ -429,14 +431,15 @@ public class AccountsDbAdapterTest extends GnuCashTest {
 
     @Test
     public void shouldCreateImbalanceAccountOnDemand() {
+        Context context = GnuCashApplication.getAppContext();
         assertThat(mAccountsDbAdapter.getRecordsCount()).isEqualTo(1L);
 
         Commodity usd = mCommoditiesDbAdapter.getCommodity("USD");
-        String imbalanceUID = mAccountsDbAdapter.getImbalanceAccountUID(usd);
+        String imbalanceUID = mAccountsDbAdapter.getImbalanceAccountUID(context, usd);
         assertThat(imbalanceUID).isNull();
         assertThat(mAccountsDbAdapter.getRecordsCount()).isEqualTo(1L);
 
-        imbalanceUID = mAccountsDbAdapter.getOrCreateImbalanceAccountUID(usd);
+        imbalanceUID = mAccountsDbAdapter.getOrCreateImbalanceAccountUID(context, usd);
         assertThat(imbalanceUID).isNotNull().isNotEmpty();
         assertThat(mAccountsDbAdapter.getRecordsCount()).isEqualTo(2);
     }
@@ -526,19 +529,56 @@ public class AccountsDbAdapterTest extends GnuCashTest {
         System.out.println("Default currency is now: " + Commodity.DEFAULT_COMMODITY);
     }
 
+    @Test
+    public void testChangesToAccount() {
+        mAccountsDbAdapter.deleteAllRecords();
+        assertThat(mAccountsDbAdapter.getRecordsCount()).isZero();
+
+        Account account1 = new Account("Test");
+        mAccountsDbAdapter.addRecord(account1, DatabaseAdapter.UpdateMethod.insert);
+        assertThat(account1.id).isNotEqualTo(0); //plus ROOT account
+        assertThat(mAccountsDbAdapter.getRecordsCount()).isEqualTo(2); //plus ROOT account
+
+        Account account2 = mAccountsDbAdapter.getRecord(account1.getUID());
+        assertThat(account2).isEqualTo(account1);
+        assertThat(account2.isPlaceholder()).isFalse();
+        assertThat(account2.isFavorite()).isFalse();
+        assertThat(account2.getColor()).isEqualTo(Account.DEFAULT_COLOR);
+
+        account2.setPlaceHolderFlag(true);
+        account2.setFavorite(true);
+        account2.setColor(Color.MAGENTA);
+        mAccountsDbAdapter.addRecord(account2, DatabaseAdapter.UpdateMethod.replace);
+        Account account3 = mAccountsDbAdapter.getRecord(account2.getUID());
+        assertThat(account3).isEqualTo(account2);
+        assertThat(account3.isPlaceholder()).isTrue();
+        assertThat(account3.isFavorite()).isTrue();
+        assertThat(account3.getColor()).isEqualTo(Color.MAGENTA);
+
+        account3.setPlaceHolderFlag(true);
+        account3.setFavorite(false);
+        account3.setColor(Color.YELLOW);
+        mAccountsDbAdapter.addRecord(account3, DatabaseAdapter.UpdateMethod.update);
+        Account account4 = mAccountsDbAdapter.getRecord(account3.getUID());
+        assertThat(account4).isEqualTo(account3);
+        assertThat(account4.isPlaceholder()).isTrue();
+        assertThat(account4.isFavorite()).isFalse();
+        assertThat(account4.getColor()).isEqualTo(Color.YELLOW);
+    }
+
     /**
      * Loads the default accounts from file resource
      */
     private void loadDefaultAccounts() {
         try {
-            String bookUID = GncXmlImporter.parse(GnuCashApplication.getAppContext().getResources().openRawResource(R.raw.default_accounts));
+            Context context = GnuCashApplication.getAppContext();
+            String bookUID = GncXmlImporter.parse(context, context.getResources().openRawResource(R.raw.default_accounts));
             initAdapters(bookUID);
         } catch (ParserConfigurationException | SAXException | IOException e) {
             Timber.e(e);
             throw new RuntimeException("Could not create default accounts");
         }
     }
-
 
     @After
     public void tearDown() throws Exception {

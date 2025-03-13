@@ -24,10 +24,10 @@ import android.database.sqlite.SQLiteStatement;
 import androidx.annotation.NonNull;
 
 import org.gnucash.android.app.GnuCashApplication;
+import org.gnucash.android.db.DatabaseSchema;
 import org.gnucash.android.model.BudgetAmount;
 import org.gnucash.android.model.Money;
 
-import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -35,20 +35,19 @@ import java.util.List;
  */
 public class BudgetAmountsDbAdapter extends DatabaseAdapter<BudgetAmount> {
 
-
     /**
      * Opens the database adapter with an existing database
      *
      * @param db SQLiteDatabase object
      */
-    public BudgetAmountsDbAdapter(SQLiteDatabase db) {
+    public BudgetAmountsDbAdapter(@NonNull SQLiteDatabase db) {
         super(db, BudgetAmountEntry.TABLE_NAME, new String[]{
-                BudgetAmountEntry.COLUMN_BUDGET_UID,
-                BudgetAmountEntry.COLUMN_ACCOUNT_UID,
-                BudgetAmountEntry.COLUMN_AMOUNT_NUM,
-                BudgetAmountEntry.COLUMN_AMOUNT_DENOM,
-                BudgetAmountEntry.COLUMN_PERIOD_NUM,
-                BudgetAmountEntry.COLUMN_NOTES
+            BudgetAmountEntry.COLUMN_BUDGET_UID,
+            BudgetAmountEntry.COLUMN_ACCOUNT_UID,
+            BudgetAmountEntry.COLUMN_AMOUNT_NUM,
+            BudgetAmountEntry.COLUMN_AMOUNT_DENOM,
+            BudgetAmountEntry.COLUMN_PERIOD_NUM,
+            BudgetAmountEntry.COLUMN_NOTES
         });
     }
 
@@ -76,18 +75,15 @@ public class BudgetAmountsDbAdapter extends DatabaseAdapter<BudgetAmount> {
 
     @Override
     protected @NonNull SQLiteStatement bind(@NonNull SQLiteStatement stmt, @NonNull final BudgetAmount budgetAmount) {
-        stmt.clearBindings();
+        bindBaseModel(stmt, budgetAmount);
         stmt.bindString(1, budgetAmount.getBudgetUID());
         stmt.bindString(2, budgetAmount.getAccountUID());
         stmt.bindLong(3, budgetAmount.getAmount().getNumerator());
         stmt.bindLong(4, budgetAmount.getAmount().getDenominator());
         stmt.bindLong(5, budgetAmount.getPeriodNum());
-        if (budgetAmount.getNotes() == null) {
-            stmt.bindNull(6);
-        } else {
+        if (budgetAmount.getNotes() != null) {
             stmt.bindString(6, budgetAmount.getNotes());
         }
-        stmt.bindString(7, budgetAmount.getUID());
 
         return stmt;
     }
@@ -100,14 +96,8 @@ public class BudgetAmountsDbAdapter extends DatabaseAdapter<BudgetAmount> {
      */
     public List<BudgetAmount> getBudgetAmountsForBudget(String budgetUID) {
         Cursor cursor = fetchAllRecords(BudgetAmountEntry.COLUMN_BUDGET_UID + "=?",
-                new String[]{budgetUID}, null);
-
-        List<BudgetAmount> budgetAmounts = new ArrayList<>();
-        while (cursor.moveToNext()) {
-            budgetAmounts.add(buildModelInstance(cursor));
-        }
-        cursor.close();
-        return budgetAmounts;
+            new String[]{budgetUID}, null);
+        return getRecords(cursor);
     }
 
     /**
@@ -118,7 +108,7 @@ public class BudgetAmountsDbAdapter extends DatabaseAdapter<BudgetAmount> {
      */
     public int deleteBudgetAmountsForBudget(String budgetUID) {
         return mDb.delete(mTableName, BudgetAmountEntry.COLUMN_BUDGET_UID + "=?",
-                new String[]{budgetUID});
+            new String[]{budgetUID});
     }
 
     /**
@@ -129,12 +119,7 @@ public class BudgetAmountsDbAdapter extends DatabaseAdapter<BudgetAmount> {
      */
     public List<BudgetAmount> getBudgetAmounts(String accountUID) {
         Cursor cursor = fetchAllRecords(BudgetAmountEntry.COLUMN_ACCOUNT_UID + " = ?", new String[]{accountUID}, null);
-        List<BudgetAmount> budgetAmounts = new ArrayList<>();
-        while (cursor.moveToNext()) {
-            budgetAmounts.add(buildModelInstance(cursor));
-        }
-        cursor.close();
-        return budgetAmounts;
+        return getRecords(cursor);
     }
 
     /**
@@ -150,5 +135,29 @@ public class BudgetAmountsDbAdapter extends DatabaseAdapter<BudgetAmount> {
             sum = sum.plus(budgetAmount.getAmount());
         }
         return sum;
+    }
+
+    /**
+     * Returns the currency code (according to the ISO 4217 standard) of the account
+     * with unique Identifier <code>accountUID</code>
+     *
+     * @param accountUID Unique Identifier of the account
+     * @return Currency code of the account.
+     */
+    // FIXME use a SQL JOIN to read the account currency code per record.
+    private String getAccountCurrencyCode(@NonNull String accountUID) {
+        Cursor cursor = mDb.query(DatabaseSchema.AccountEntry.TABLE_NAME,
+            new String[]{DatabaseSchema.AccountEntry.COLUMN_CURRENCY},
+            DatabaseSchema.AccountEntry.COLUMN_UID + "= ?",
+            new String[]{accountUID}, null, null, null);
+        try {
+            if (cursor.moveToFirst()) {
+                return cursor.getString(0);
+            } else {
+                throw new IllegalArgumentException("Account " + accountUID + " does not exist");
+            }
+        } finally {
+            cursor.close();
+        }
     }
 }

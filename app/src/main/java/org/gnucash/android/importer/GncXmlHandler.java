@@ -99,6 +99,7 @@ import static org.gnucash.android.export.xml.GncXmlHelper.parseDateTime;
 import static org.gnucash.android.export.xml.GncXmlHelper.parseSplitAmount;
 import static org.gnucash.android.model.Commodity.TEMPLATE;
 
+import android.content.Context;
 import android.database.sqlite.SQLiteDatabase;
 import android.text.TextUtils;
 
@@ -337,21 +338,32 @@ public class GncXmlHandler extends DefaultHandler implements Closeable {
     private final Book mBook = new Book();
     private SQLiteDatabase mDB;
     private DatabaseHelper mDatabaseHelper;
+    @NonNull
+    private final Context context;
 
     /**
      * Creates a handler for handling XML stream events when parsing the XML backup file
      */
     public GncXmlHandler() {
-        DatabaseHelper databaseHelper = new DatabaseHelper(GnuCashApplication.getAppContext(), mBook.getUID());
+        this(GnuCashApplication.getAppContext());
+    }
+
+    /**
+     * Creates a handler for handling XML stream events when parsing the XML backup file
+     */
+    public GncXmlHandler(@NonNull Context context) {
+        super();
+        this.context = context;
+        DatabaseHelper databaseHelper = new DatabaseHelper(context, mBook.getUID());
         mDatabaseHelper = databaseHelper;
         mDB = databaseHelper.getWritableDatabase();
         mCommoditiesDbAdapter = new CommoditiesDbAdapter(mDB);
-        mTransactionsDbAdapter = new TransactionsDbAdapter(mDB, mCommoditiesDbAdapter);
-        mAccountsDbAdapter = new AccountsDbAdapter(mDB, mTransactionsDbAdapter);
+        mPricesDbAdapter = new PricesDbAdapter(mCommoditiesDbAdapter);
+        mTransactionsDbAdapter = new TransactionsDbAdapter(mPricesDbAdapter);
+        mAccountsDbAdapter = new AccountsDbAdapter(mTransactionsDbAdapter);
         RecurrenceDbAdapter recurrenceDbAdapter = new RecurrenceDbAdapter(mDB);
-        mScheduledActionsDbAdapter = new ScheduledActionDbAdapter(mDB, recurrenceDbAdapter);
-        mPricesDbAdapter = new PricesDbAdapter(mDB, mCommoditiesDbAdapter);
-        mBudgetsDbAdapter = new BudgetsDbAdapter(mDB, recurrenceDbAdapter);
+        mScheduledActionsDbAdapter = new ScheduledActionDbAdapter(recurrenceDbAdapter);
+        mBudgetsDbAdapter = new BudgetsDbAdapter(recurrenceDbAdapter);
 
         mContent = new StringBuilder();
 
@@ -979,7 +991,7 @@ public class GncXmlHandler extends DefaultHandler implements Closeable {
             mAccountMap.put(mRootAccount.getUID(), mRootAccount);
         }
 
-        String imbalancePrefix = AccountsDbAdapter.getImbalanceAccountPrefix();
+        String imbalancePrefix = AccountsDbAdapter.getImbalanceAccountPrefix(context);
 
         // Add all account without a parent to ROOT, and collect top level imbalance accounts
         for (Account account : mAccountList) {

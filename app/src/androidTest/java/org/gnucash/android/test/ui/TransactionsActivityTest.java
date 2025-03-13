@@ -30,6 +30,7 @@ import static androidx.test.espresso.matcher.ViewMatchers.withParent;
 import static androidx.test.espresso.matcher.ViewMatchers.withTagValue;
 import static androidx.test.espresso.matcher.ViewMatchers.withText;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.gnucash.android.test.ui.AccountsActivityTest.preventFirstRunDialogs;
 import static org.hamcrest.Matchers.allOf;
 import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.not;
@@ -110,29 +111,10 @@ public class TransactionsActivityTest extends GnuAndroidTest {
     private Account mBaseAccount;
     private Account mTransferAccount;
 
-    public TransactionsActivityTest() {
-        mBaseAccount = new Account(TRANSACTIONS_ACCOUNT_NAME, COMMODITY);
-        mBaseAccount.setUID(TRANSACTIONS_ACCOUNT_UID);
-
-        mTransferAccount = new Account(TRANSFER_ACCOUNT_NAME, COMMODITY);
-        mTransferAccount.setUID(TRANSFER_ACCOUNT_UID);
-
-        mTransactionTimeMillis = System.currentTimeMillis();
-        mTransaction = new Transaction(TRANSACTION_NAME);
-        mTransaction.setCommodity(COMMODITY);
-        mTransaction.setNote("What up?");
-        mTransaction.setTime(mTransactionTimeMillis);
-        Split split = new Split(new Money(TRANSACTION_AMOUNT, CURRENCY_CODE), TRANSACTIONS_ACCOUNT_UID);
-        split.setType(TransactionType.DEBIT);
-
-        mTransaction.addSplit(split);
-        mTransaction.addSplit(split.createPair(TRANSFER_ACCOUNT_UID));
-    }
-
     @BeforeClass
     public static void prepareTestCase() {
         Context context = GnuCashApplication.getAppContext();
-        AccountsActivityTest.preventFirstRunDialogs(context);
+        preventFirstRunDialogs(context);
 
         mSplitsDbAdapter = SplitsDbAdapter.getInstance();
         mTransactionsDbAdapter = TransactionsDbAdapter.getInstance();
@@ -146,19 +128,34 @@ public class TransactionsActivityTest extends GnuAndroidTest {
         setDefaultTransactionType(TransactionType.DEBIT);
 
         mAccountsDbAdapter.deleteAllRecords();
+
+        mBaseAccount = new Account(TRANSACTIONS_ACCOUNT_NAME, COMMODITY);
+        mBaseAccount.setUID(TRANSACTIONS_ACCOUNT_UID);
         mAccountsDbAdapter.addRecord(mBaseAccount, DatabaseAdapter.UpdateMethod.insert);
+
+        mTransferAccount = new Account(TRANSFER_ACCOUNT_NAME, COMMODITY);
+        mTransferAccount.setUID(TRANSFER_ACCOUNT_UID);
         mAccountsDbAdapter.addRecord(mTransferAccount, DatabaseAdapter.UpdateMethod.insert);
 
-        mTransactionsDbAdapter.addRecord(mTransaction, DatabaseAdapter.UpdateMethod.insert);
-
         assertThat(mAccountsDbAdapter.getRecordsCount()).isEqualTo(3); //including ROOT account
+
+        mTransactionTimeMillis = System.currentTimeMillis();
+        mTransaction = new Transaction(TRANSACTION_NAME);
+        mTransaction.setCommodity(COMMODITY);
+        mTransaction.setNote("What up?");
+        mTransaction.setTime(mTransactionTimeMillis);
+        Split split = new Split(new Money(TRANSACTION_AMOUNT, CURRENCY_CODE), TRANSACTIONS_ACCOUNT_UID);
+        split.setType(TransactionType.DEBIT);
+
+        mTransaction.addSplit(split);
+        mTransaction.addSplit(split.createPair(TRANSFER_ACCOUNT_UID));
+
+        mTransactionsDbAdapter.addRecord(mTransaction, DatabaseAdapter.UpdateMethod.insert);
         assertThat(mTransactionsDbAdapter.getRecordsCount()).isEqualTo(1);
 
         Intent intent = new Intent(Intent.ACTION_VIEW);
         intent.putExtra(UxArgument.SELECTED_ACCOUNT_UID, TRANSACTIONS_ACCOUNT_UID);
         mTransactionsActivity = mActivityRule.launchActivity(intent);
-
-        //refreshTransactionsList();
     }
 
 
@@ -202,19 +199,6 @@ public class TransactionsActivityTest extends GnuAndroidTest {
         int afterCount = mTransactionsDbAdapter.getTransactionsCount(TRANSACTIONS_ACCOUNT_UID);
         assertThat(afterCount).isEqualTo(beforeCount);
 
-    }
-
-    /**
-     * Sleep the thread for a specified period
-     *
-     * @param millis Duration to sleep in milliseconds
-     */
-    private void sleep(long millis) {
-        try {
-            Thread.sleep(millis);
-        } catch (InterruptedException e) {
-            e.printStackTrace();
-        }
     }
 
     /**
@@ -361,11 +345,12 @@ public class TransactionsActivityTest extends GnuAndroidTest {
      */
     //TODO: move this to the unit tests
     public void testAutoBalanceTransactions() {
+        Context context = GnuCashApplication.getAppContext();
         setDoubleEntryEnabled(false);
         mTransactionsDbAdapter.deleteAllRecords();
 
         assertThat(mTransactionsDbAdapter.getRecordsCount()).isEqualTo(0);
-        String imbalanceAcctUID = mAccountsDbAdapter.getImbalanceAccountUID(COMMODITY);
+        String imbalanceAcctUID = mAccountsDbAdapter.getImbalanceAccountUID(context, COMMODITY);
         assertThat(imbalanceAcctUID).isNull();
 
         validateTransactionListDisplayed();
@@ -382,7 +367,7 @@ public class TransactionsActivityTest extends GnuAndroidTest {
         assertThat(mTransactionsDbAdapter.getRecordsCount()).isEqualTo(1);
         Transaction transaction = mTransactionsDbAdapter.getAllTransactions().get(0);
         assertThat(transaction.getSplits()).hasSize(2);
-        imbalanceAcctUID = mAccountsDbAdapter.getImbalanceAccountUID(COMMODITY);
+        imbalanceAcctUID = mAccountsDbAdapter.getImbalanceAccountUID(context, COMMODITY);
         assertThat(imbalanceAcctUID).isNotNull();
         assertThat(imbalanceAcctUID).isNotEmpty();
         assertThat(mAccountsDbAdapter.isHiddenAccount(imbalanceAcctUID)).isTrue(); //imbalance account should be hidden in single entry mode
@@ -398,11 +383,12 @@ public class TransactionsActivityTest extends GnuAndroidTest {
      */
     @Test
     public void testSplitEditor() {
+        Context context = GnuCashApplication.getAppContext();
         setDefaultTransactionType(TransactionType.DEBIT);
         mTransactionsDbAdapter.deleteAllRecords();
 
         //when we start there should be no imbalance account in the system
-        String imbalanceAcctUID = mAccountsDbAdapter.getImbalanceAccountUID(COMMODITY);
+        String imbalanceAcctUID = mAccountsDbAdapter.getImbalanceAccountUID(context, COMMODITY);
         assertThat(imbalanceAcctUID).isNull();
 
         validateTransactionListDisplayed();
@@ -430,7 +416,7 @@ public class TransactionsActivityTest extends GnuAndroidTest {
         Transaction transaction = transactions.get(0);
 
         assertThat(transaction.getSplits()).hasSize(3); //auto-balanced
-        imbalanceAcctUID = mAccountsDbAdapter.getImbalanceAccountUID(COMMODITY);
+        imbalanceAcctUID = mAccountsDbAdapter.getImbalanceAccountUID(context, COMMODITY);
         assertThat(imbalanceAcctUID).isNotNull();
         assertThat(imbalanceAcctUID).isNotEmpty();
         assertThat(mAccountsDbAdapter.isHiddenAccount(imbalanceAcctUID)).isFalse();

@@ -51,14 +51,14 @@ public class BooksDbAdapter extends DatabaseAdapter<Book> {
      *
      * @param db SQLiteDatabase object
      */
-    public BooksDbAdapter(SQLiteDatabase db) {
+    public BooksDbAdapter(@NonNull SQLiteDatabase db) {
         super(db, BookEntry.TABLE_NAME, new String[]{
-                BookEntry.COLUMN_DISPLAY_NAME,
-                BookEntry.COLUMN_ROOT_GUID,
-                BookEntry.COLUMN_TEMPLATE_GUID,
-                BookEntry.COLUMN_SOURCE_URI,
-                BookEntry.COLUMN_ACTIVE,
-                BookEntry.COLUMN_LAST_SYNC
+            BookEntry.COLUMN_DISPLAY_NAME,
+            BookEntry.COLUMN_ROOT_GUID,
+            BookEntry.COLUMN_TEMPLATE_GUID,
+            BookEntry.COLUMN_SOURCE_URI,
+            BookEntry.COLUMN_ACTIVE,
+            BookEntry.COLUMN_LAST_SYNC
         });
     }
 
@@ -93,19 +93,17 @@ public class BooksDbAdapter extends DatabaseAdapter<Book> {
 
     @Override
     protected @NonNull SQLiteStatement bind(@NonNull SQLiteStatement stmt, @NonNull final Book book) {
-        stmt.clearBindings();
+        bindBaseModel(stmt, book);
         String displayName = TextUtils.isEmpty(book.getDisplayName()) ? generateDefaultBookName() : book.getDisplayName();
         stmt.bindString(1, displayName);
         stmt.bindString(2, book.getRootAccountUID());
         stmt.bindString(3, book.getRootTemplateUID());
         if (book.getSourceUri() != null) {
             stmt.bindString(4, book.getSourceUri().toString());
-        } else {
-            stmt.bindNull(4);
         }
-        stmt.bindLong(5, book.isActive() ? 1L : 0L);
+        stmt.bindLong(5, book.isActive() ? 1 : 0);
         stmt.bindString(6, TimestampHelper.getUtcStringFromTimestamp(book.getLastSync()));
-        stmt.bindString(7, book.getUID());
+
         return stmt;
     }
 
@@ -168,12 +166,12 @@ public class BooksDbAdapter extends DatabaseAdapter<Book> {
      */
     public @NonNull String getActiveBookUID() {
         try (Cursor cursor = mDb.query(mTableName,
-                new String[]{BookEntry.COLUMN_UID},
-                BookEntry.COLUMN_ACTIVE + "= 1",
-                null,
-                null,
-                null,
-                null,
+            new String[]{BookEntry.COLUMN_UID},
+            BookEntry.COLUMN_ACTIVE + "= 1",
+            null,
+            null,
+            null,
+            null,
             null)) {
             if (cursor.moveToFirst()) {
                 return cursor.getString(cursor.getColumnIndexOrThrow(BookEntry.COLUMN_UID));
@@ -191,9 +189,9 @@ public class BooksDbAdapter extends DatabaseAdapter<Book> {
         StringBuilder info = new StringBuilder("UID, created, source\n");
         for (Book book : getAllRecords()) {
             info.append(String.format("%s, %s, %s\n",
-                    book.getUID(),
-                    book.getCreatedTimestamp(),
-                    book.getSourceUri()));
+                book.getUID(),
+                book.getCreatedTimestamp(),
+                book.getSourceUri()));
         }
         return info.toString();
     }
@@ -210,6 +208,7 @@ public class BooksDbAdapter extends DatabaseAdapter<Book> {
 
     /**
      * Tries to fix the books database.
+     *
      * @return the active book UID.
      */
     @Nullable
@@ -247,8 +246,7 @@ public class BooksDbAdapter extends DatabaseAdapter<Book> {
         Context context = GnuCashApplication.getAppContext();
         DatabaseHelper databaseHelper = new DatabaseHelper(context, dbName);
         SQLiteDatabase db = databaseHelper.getReadableDatabase();
-        AccountsDbAdapter accountsDbAdapter = new AccountsDbAdapter(db,
-                new TransactionsDbAdapter(db));
+        AccountsDbAdapter accountsDbAdapter = new AccountsDbAdapter(db);
         String uid = accountsDbAdapter.getOrCreateGnuCashRootAccountUID();
         db.close();
         return uid;
@@ -294,7 +292,7 @@ public class BooksDbAdapter extends DatabaseAdapter<Book> {
     public @NonNull List<String> getAllBookUIDs() {
         List<String> bookUIDs = new ArrayList<>();
         try (Cursor cursor = mDb.query(true, mTableName, new String[]{BookEntry.COLUMN_UID},
-                null, null, null, null, null, null)) {
+            null, null, null, null, null, null)) {
             while (cursor.moveToNext()) {
                 bookUIDs.add(cursor.getString(cursor.getColumnIndexOrThrow(BookEntry.COLUMN_UID)));
             }
@@ -311,8 +309,8 @@ public class BooksDbAdapter extends DatabaseAdapter<Book> {
      */
     public @NonNull String getActiveBookDisplayName() {
         Cursor cursor = mDb.query(mTableName,
-                new String[]{BookEntry.COLUMN_DISPLAY_NAME}, BookEntry.COLUMN_ACTIVE + " = 1",
-                null, null, null, null);
+            new String[]{BookEntry.COLUMN_DISPLAY_NAME}, BookEntry.COLUMN_ACTIVE + " = 1",
+            null, null, null, null);
         try {
             if (cursor.moveToFirst()) {
                 return cursor.getString(cursor.getColumnIndexOrThrow(BookEntry.COLUMN_DISPLAY_NAME));

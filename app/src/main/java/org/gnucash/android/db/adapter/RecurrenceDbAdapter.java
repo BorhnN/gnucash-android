@@ -45,13 +45,13 @@ public class RecurrenceDbAdapter extends DatabaseAdapter<Recurrence> {
      *
      * @param db SQLiteDatabase object
      */
-    public RecurrenceDbAdapter(SQLiteDatabase db) {
+    public RecurrenceDbAdapter(@NonNull SQLiteDatabase db) {
         super(db, RecurrenceEntry.TABLE_NAME, new String[]{
-                RecurrenceEntry.COLUMN_MULTIPLIER,
-                RecurrenceEntry.COLUMN_PERIOD_TYPE,
-                RecurrenceEntry.COLUMN_BYDAY,
-                RecurrenceEntry.COLUMN_PERIOD_START,
-                RecurrenceEntry.COLUMN_PERIOD_END
+            RecurrenceEntry.COLUMN_MULTIPLIER,
+            RecurrenceEntry.COLUMN_PERIOD_TYPE,
+            RecurrenceEntry.COLUMN_BYDAY,
+            RecurrenceEntry.COLUMN_PERIOD_START,
+            RecurrenceEntry.COLUMN_PERIOD_END
         });
     }
 
@@ -82,23 +82,17 @@ public class RecurrenceDbAdapter extends DatabaseAdapter<Recurrence> {
 
     @Override
     protected @NonNull SQLiteStatement bind(@NonNull SQLiteStatement stmt, @NonNull final Recurrence recurrence) {
-        stmt.clearBindings();
+        bindBaseModel(stmt, recurrence);
         stmt.bindLong(1, recurrence.getMultiplier());
         stmt.bindString(2, recurrence.getPeriodType().name());
         if (!recurrence.getByDays().isEmpty()) {
             stmt.bindString(3, byDaysToString(recurrence.getByDays()));
-        } else {
-            stmt.bindNull(3);
         }
         //recurrence should always have a start date
         stmt.bindString(4, TimestampHelper.getUtcStringFromTimestamp(recurrence.getPeriodStart()));
-
         if (recurrence.getPeriodEnd() != null) {
             stmt.bindString(5, TimestampHelper.getUtcStringFromTimestamp(recurrence.getPeriodEnd()));
-        } else {
-            stmt.bindNull(5);
         }
-        stmt.bindString(6, recurrence.getUID());
 
         return stmt;
     }

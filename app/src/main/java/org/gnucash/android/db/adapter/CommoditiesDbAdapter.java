@@ -22,12 +22,13 @@ import timber.log.Timber;
  * Database adapter for {@link org.gnucash.android.model.Commodity}
  */
 public class CommoditiesDbAdapter extends DatabaseAdapter<Commodity> {
+    private Commodity defaultCommodity;
     /**
      * Opens the database adapter with an existing database
      *
      * @param db SQLiteDatabase object
      */
-    public CommoditiesDbAdapter(SQLiteDatabase db) {
+    public CommoditiesDbAdapter(@NonNull SQLiteDatabase db) {
         this(db, true);
     }
 
@@ -37,7 +38,7 @@ public class CommoditiesDbAdapter extends DatabaseAdapter<Commodity> {
      * @param db         SQLiteDatabase object
      * @param initCommon initialize commonly used commodities?
      */
-    public CommoditiesDbAdapter(SQLiteDatabase db, boolean initCommon) {
+    public CommoditiesDbAdapter(@NonNull SQLiteDatabase db, boolean initCommon) {
         super(db, CommodityEntry.TABLE_NAME, new String[]{
             CommodityEntry.COLUMN_FULLNAME,
             CommodityEntry.COLUMN_NAMESPACE,
@@ -50,6 +51,8 @@ public class CommoditiesDbAdapter extends DatabaseAdapter<Commodity> {
         });
         if (initCommon) {
             initCommon();
+        } else {
+            defaultCommodity = getDefaultCommodity();
         }
     }
 
@@ -65,7 +68,7 @@ public class CommoditiesDbAdapter extends DatabaseAdapter<Commodity> {
         Commodity.JPY = Objects.requireNonNull(getCommodity("JPY"));
         Commodity.USD = Objects.requireNonNull(getCommodity("USD"));
 
-        Commodity.DEFAULT_COMMODITY = getDefaultCommodity();
+        defaultCommodity = Commodity.DEFAULT_COMMODITY = getDefaultCommodity();
     }
 
     @Nullable
@@ -75,32 +78,23 @@ public class CommoditiesDbAdapter extends DatabaseAdapter<Commodity> {
 
     @Override
     protected @NonNull SQLiteStatement bind(@NonNull SQLiteStatement stmt, @NonNull final Commodity commodity) {
-        stmt.clearBindings();
+        bindBaseModel(stmt, commodity);
         stmt.bindString(1, commodity.getFullname());
         stmt.bindString(2, commodity.getNamespace());
         stmt.bindString(3, commodity.getMnemonic());
         if (commodity.getLocalSymbol() != null) {
             stmt.bindString(4, commodity.getLocalSymbol());
-        } else {
-            stmt.bindNull(4);
         }
         if (commodity.getCusip() != null) {
             stmt.bindString(5, commodity.getCusip());
-        } else {
-            stmt.bindNull(5);
         }
         stmt.bindLong(6, commodity.getSmallestFraction());
         if (commodity.getQuoteSource() != null) {
             stmt.bindString(7, commodity.getQuoteSource());
-        } else {
-            stmt.bindNull(7);
         }
         if (commodity.getQuoteTimeZoneId() != null) {
             stmt.bindString(8, commodity.getQuoteTimeZoneId());
-        } else {
-            stmt.bindNull(8);
         }
-        stmt.bindString(9, commodity.getUID());
 
         return stmt;
     }
@@ -197,8 +191,12 @@ public class CommoditiesDbAdapter extends DatabaseAdapter<Commodity> {
 
     @NonNull
     public Commodity getDefaultCommodity() {
+        Commodity commodity = defaultCommodity;
+        if (commodity != null) {
+            return commodity;
+        }
         String commodityCode = GnuCashApplication.getDefaultCurrencyCode();
-        Commodity commodity = getCommodity(commodityCode);
+        defaultCommodity = commodity = getCommodity(commodityCode);
         return (commodity != null) ? commodity : Commodity.DEFAULT_COMMODITY;
     }
 }

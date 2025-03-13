@@ -3,7 +3,6 @@ package org.gnucash.android.db.adapter;
 import static org.gnucash.android.db.DatabaseSchema.PriceEntry;
 
 import android.database.Cursor;
-import android.database.sqlite.SQLiteDatabase;
 import android.database.sqlite.SQLiteStatement;
 import android.util.Pair;
 
@@ -20,22 +19,23 @@ import java.io.IOException;
  * Database adapter for prices
  */
 public class PricesDbAdapter extends DatabaseAdapter<Price> {
-    private final CommoditiesDbAdapter commoditiesDbAdapter;
+    @NonNull
+    final CommoditiesDbAdapter commoditiesDbAdapter;
+
     /**
      * Opens the database adapter with an existing database
      *
-     * @param db SQLiteDatabase object
      * @param commoditiesDbAdapter the commodities database adapter.
      */
-    public PricesDbAdapter(@NonNull SQLiteDatabase db, @NonNull CommoditiesDbAdapter commoditiesDbAdapter) {
-        super(db, PriceEntry.TABLE_NAME, new String[]{
-                PriceEntry.COLUMN_COMMODITY_UID,
-                PriceEntry.COLUMN_CURRENCY_UID,
-                PriceEntry.COLUMN_DATE,
-                PriceEntry.COLUMN_SOURCE,
-                PriceEntry.COLUMN_TYPE,
-                PriceEntry.COLUMN_VALUE_NUM,
-                PriceEntry.COLUMN_VALUE_DENOM
+    public PricesDbAdapter(@NonNull CommoditiesDbAdapter commoditiesDbAdapter) {
+        super(commoditiesDbAdapter.mDb, PriceEntry.TABLE_NAME, new String[]{
+            PriceEntry.COLUMN_COMMODITY_UID,
+            PriceEntry.COLUMN_CURRENCY_UID,
+            PriceEntry.COLUMN_DATE,
+            PriceEntry.COLUMN_SOURCE,
+            PriceEntry.COLUMN_TYPE,
+            PriceEntry.COLUMN_VALUE_NUM,
+            PriceEntry.COLUMN_VALUE_DENOM
         });
         this.commoditiesDbAdapter = commoditiesDbAdapter;
     }
@@ -46,31 +46,24 @@ public class PricesDbAdapter extends DatabaseAdapter<Price> {
 
     @Override
     public void close() throws IOException {
-        if (commoditiesDbAdapter != null) {
-            commoditiesDbAdapter.close();
-        }
         super.close();
+        commoditiesDbAdapter.close();
     }
 
     @Override
     protected @NonNull SQLiteStatement bind(@NonNull SQLiteStatement stmt, @NonNull final Price price) {
-        stmt.clearBindings();
+        bindBaseModel(stmt, price);
         stmt.bindString(1, price.getCommodityUID());
         stmt.bindString(2, price.getCurrencyUID());
         stmt.bindString(3, TimestampHelper.getUtcStringFromTimestamp(price.getDate()));
         if (price.getSource() != null) {
             stmt.bindString(4, price.getSource());
-        } else {
-            stmt.bindNull(4);
         }
         if (price.getType() != null) {
             stmt.bindString(5, price.getType());
-        } else {
-            stmt.bindNull(5);
         }
         stmt.bindLong(6, price.getValueNum());
         stmt.bindLong(7, price.getValueDenom());
-        stmt.bindString(8, price.getUID());
 
         return stmt;
     }
@@ -115,12 +108,12 @@ public class PricesDbAdapter extends DatabaseAdapter<Price> {
             return new Pair<>(1L, 1L);
         }
         Cursor cursor = mDb.query(PriceEntry.TABLE_NAME, null,
-                // the commodity and currency can be swapped
-                "( " + PriceEntry.COLUMN_COMMODITY_UID + " = ? AND " + PriceEntry.COLUMN_CURRENCY_UID + " = ? ) OR ( "
-                        + PriceEntry.COLUMN_COMMODITY_UID + " = ? AND " + PriceEntry.COLUMN_CURRENCY_UID + " = ? )",
-                new String[]{commodityUID, currencyUID, currencyUID, commodityUID}, null, null,
-                // only get the latest price
-                PriceEntry.COLUMN_DATE + " DESC", "1");
+            // the commodity and currency can be swapped
+            "( " + PriceEntry.COLUMN_COMMODITY_UID + " = ? AND " + PriceEntry.COLUMN_CURRENCY_UID + " = ? ) OR ( "
+                + PriceEntry.COLUMN_COMMODITY_UID + " = ? AND " + PriceEntry.COLUMN_CURRENCY_UID + " = ? )",
+            new String[]{commodityUID, currencyUID, currencyUID, commodityUID}, null, null,
+            // only get the latest price
+            PriceEntry.COLUMN_DATE + " DESC", "1");
         try {
             if (cursor.moveToNext()) {
                 String commodityUIDdb = cursor.getString(cursor.getColumnIndexOrThrow(PriceEntry.COLUMN_COMMODITY_UID));
