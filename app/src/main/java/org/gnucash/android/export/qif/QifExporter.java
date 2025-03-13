@@ -60,17 +60,14 @@ import org.gnucash.android.util.TimestampHelper;
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.File;
-import java.io.FileOutputStream;
 import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
-import java.io.OutputStreamWriter;
+import java.io.Writer;
 import java.math.BigDecimal;
-import java.nio.charset.StandardCharsets;
 import java.text.DecimalFormat;
 import java.text.NumberFormat;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
@@ -98,7 +95,27 @@ public class QifExporter extends Exporter {
     }
 
     @Override
-    public List<String> generateExport() throws ExporterException {
+    protected File writeToFile(@NonNull ExportParams exportParams) throws ExporterException, IOException {
+        final boolean isCompressed = exportParams.isCompressed;
+        // Disable compression for files that will be zipped afterwards.
+        exportParams.isCompressed = false;
+        File cacheFile = super.writeToFile(exportParams);
+        exportParams.isCompressed = isCompressed;
+
+        List<File> splitByCurrency = splitByCurrency(cacheFile);
+        if (splitByCurrency.isEmpty()) {
+            return null;
+        }
+        if (isCompressed || (splitByCurrency.size() > 1)) {
+            File zipFile = new File(cacheFile.getPath() + ".zip");
+            return zipQifs(splitByCurrency, zipFile);
+        }
+        return splitByCurrency.get(0);
+    }
+
+    @Override
+    // TODO write each commodity to separate file here, instead of splitting the file afterwards.
+    protected void writeExport(@NonNull ExportParams exportParams, @NonNull Writer writer) throws ExporterException, IOException {
         String startTimeString = Long.toString(mExportParams.getExportStartTime().getTime());
         TransactionsDbAdapter transactionsDbAdapter = mTransactionsDbAdapter;
 
@@ -133,7 +150,7 @@ public class QifExporter extends Exporter {
                 // or if the transaction has only one split (the whole transaction would be lost if it is not selected)
                 "trans_split_count == 1 )" +
                 " AND " + TransactionEntry.TABLE_NAME + "_" + TransactionEntry.COLUMN_TIMESTAMP + " >= ?";
-        final String whereArgs = new String[]{startTimeString};
+        final String[] whereArgs = new String[]{startTimeString};
         // trans_time ASC : put transactions in time order
         // trans_uid ASC  : put splits from the same transaction together
         final String orderBy = "acct1_uid ASC, trans_uid ASC, trans_time ASC";
@@ -146,10 +163,6 @@ public class QifExporter extends Exporter {
                 whereArgs,
                 orderBy
             );
-
-            // TODO write each commodity to separate file here, instead of splitting the file afterwards.
-            File file = new File(getExportCacheFilePath());
-            BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(file), StandardCharsets.UTF_8));
 
             String currentCommodityUID = "";
             String currentAccountUID = "";
@@ -299,40 +312,31 @@ public class QifExporter extends Exporter {
 
             /// export successful
             PreferencesHelper.setLastExportTime(TimestampHelper.getTimestampFromNow());
-            close();
-
-            List<String> exportedFiles = splitQIF(file);
-            if (exportedFiles.isEmpty())
-                return Collections.emptyList();
-            else if (exportedFiles.size() > 1)
-                return zipQifs(exportedFiles);
-            else
-                return exportedFiles;
         } catch (IOException e) {
-            throw new ExporterException(mExportParams, e);
+            throw new ExporterException(exportParams, e);
         } finally {
             if (cursor != null) cursor.close();
         }
     }
 
     @NonNull
-    private List<String> zipQifs(List<String> exportedFiles) throws IOException {
-        String zipFileName = getExportCacheFilePath() + ".zip";
-        FileUtils.zipFiles(exportedFiles, zipFileName);
-        return Collections.singletonList(zipFileName);
+    private File zipQifs(List<File> exportedFiles, File zipFile) throws IOException {
+        FileUtils.zipFiles(exportedFiles, zipFile);
+        return zipFile;
     }
 
     /**
-     * Splits a Qif file into several ones for each currency.
+     * Splits a QIF file into several ones for each currency.
      *
-     * @param file File object of the Qif file to split.
+     * @param file File of the QIF file to split.
      * @return a list of paths of the newly created Qif files.
      * @throws IOException if something went wrong while splitting the file.
      */
-    private List<String> splitQIF(File file) throws IOException {
+    private List<File> splitByCurrency(File file) throws IOException {
         // split only at the last dot
-        String[] pathParts = file.getPath().split("(?=\\.[^\\.]+$)");
-        List<String> splitFiles = new ArrayList<>();
+        String path = file.getPath();
+        String[] pathParts = path.split("(?=\\.[^\\.]+$)");
+        List<File> splitFiles = new ArrayList<>();
         String line;
         BufferedReader in = new BufferedReader(new FileReader(file));
         BufferedWriter out = null;
@@ -344,11 +348,12 @@ public class QifExporter extends Exporter {
                         out.close();
                     }
                     String newFileName = pathParts[0] + "_" + currencyCode + pathParts[1];
-                    splitFiles.add(newFileName);
-                    out = new BufferedWriter(new FileWriter(newFileName));
+                    File splitFile = new File(newFileName);
+                    splitFiles.add(splitFile);
+                    out = new BufferedWriter(new FileWriter(splitFile));
                 } else {
                     if (out == null) {
-                        throw new IllegalArgumentException(file.getPath() + " format is not correct");
+                        throw new IllegalArgumentException(path + " format is not correct");
                     }
                     out.append(line).append(NEW_LINE);
                 }
