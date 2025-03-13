@@ -86,7 +86,7 @@
     <string name="title_passcode_preferences">Ajustes de contraseña</string>
     <string name="title_enable_passcode">Habilitar clave</string>
     <string name="title_change_passcode">Cambiar Contraseña</string>
-    <string name="title_about_gnucash">Acerca de Gnucash</string>
+    <string name="title_about_gnucash">Acerca de GnuCash</string>
     <string name="title_export_email">Exportación %1$s de GnuCash Pocket</string>
     <string name="description_export_email">Exportación desde GnuCash Pocket</string>
     <string name="header_transaction_settings">Transacciones</string>
